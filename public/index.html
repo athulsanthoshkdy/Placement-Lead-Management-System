@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Placement Lead Management System</title>
+    <link rel="icon" type="image/png" href="assets/logo.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Login/Register Page -->
+    <div id="authPage" class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1>Placement Lead Management</h1>
+                <p id="authSubtitle">Sign in to manage placement opportunities</p>
+            </div>
+            
+            <!-- Login Form -->
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label for="loginEmail" class="form-label">Email Address</label>
+                    <input type="email" id="loginEmail" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword" class="form-label">Password</label>
+                    <input type="password" id="loginPassword" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn--primary btn--full-width">Sign In</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="registerForm" class="auth-form hidden">
+                <div class="form-group">
+                    <label for="registerName" class="form-label">Full Name</label>
+                    <input type="text" id="registerName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerEmail" class="form-label">Email Address</label>
+                    <input type="email" id="registerEmail" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword" class="form-label">Password</label>
+                    <input type="password" id="registerPassword" class="form-control" minlength="6" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword" class="form-label">Confirm Password</label>
+                    <input type="password" id="confirmPassword" class="form-control" minlength="6" required>
+                </div>
+                <button type="submit" class="btn btn--primary btn--full-width">Create Account</button>
+            </form>
+
+            <div class="auth-switch">
+                <p id="authSwitchText">Don't have an account? <button type="button" id="showRegister" class="auth-link">Sign up</button></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="mainApp" class="main-app hidden">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <img src="assets/logo.png" alt="PLMS Logo" class="navbar-logo">
+                <h2>PLMS</h2>
+            </div>
+            <div class="navbar-menu">
+                <button class="nav-item active" onclick="showPage('dashboard')" data-page="dashboard">
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-item" onclick="showPage('leads')" data-page="leads">
+                    <span>All Leads</span>
+                </button>
+                <button class="nav-item" onclick="showPage('addLead')" data-page="addLead">
+                    <span>Add Lead</span>
+                </button>
+                <button class="nav-item admin-only" onclick="showPage('admin')" data-page="admin">
+                    <span>Admin</span>
+                </button>
+            </div>
+            <div class="navbar-user">
+                <div class="user-menu">
+                    <img id="userAvatar" src="" alt="User" class="user-avatar">
+                    <span id="userName">User</span>
+                    <button class="btn btn--outline btn--sm" onclick="handleLogout()">Logout</button>
+                    <button id="themeToggle"
+                        class="btn btn--outline btn--sm"
+                        data-mode="system"
+                        title="Toggle theme">🌓</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Dashboard Page -->
+        <div id="dashboardPage" class="page-content">
+            <div class="page-header">
+                <div>
+                    <h1>Dashboard</h1>
+                    <p>Overview of placement activities and performance</p>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalLeads">0</div>
+                    <div class="stat-label">Total Leads</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="activeLeads">0</div>
+                    <div class="stat-label">Active Leads</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="closedLeads">0</div>
+                    <div class="stat-label">Closed Leads</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="successRate">0%</div>
+                    <div class="stat-label">Success Rate</div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card__body">
+                        <h3>Lead Status Distribution</h3>
+                        <div class="chart-container">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card__body">
+                        <h3>Submission Trends</h3>
+                        
+                        <!-- Dropdown to select trend type -->
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label for="trendRange" class="form-label">View By:</label>
+                            <select id="trendRange" class="form-control" 
+                                    onchange="window.plmsApp.updateTrendChart(this.value)">
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly" selected>Monthly</option>
+                            </select>
+
+                        </div>
+
+                        <div class="chart-container">
+                            <canvas id="timeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="recent-activity">
+                <div class="card">
+                    <div class="card__body">
+                        <h3>Recent Activity</h3>
+                        <div id="activityFeed" class="activity-feed"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leads Page -->
+        <div id="leadsPage" class="page-content hidden">
+            <div class="page-header">
+                <div>
+                    <h1>All Leads</h1>
+                    <p>Manage and track placement opportunities</p>
+                </div>
+            </div>
+
+            <div class="filters-section">
+                <div class="card">
+                    <div class="card__body">
+                        <div class="filters-grid">
+                            <div class="form-group">
+                                <label class="form-label">Search</label>
+                                <input type="text" id="searchInput" class="form-control" placeholder="Search by company name...">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Status</label>
+                                <select id="statusFilter" class="form-control">
+                                    <option value="">All Statuses</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Tags</label>
+                                <select id="tagFilter" class="form-control">
+                                    <option value="">All Tags</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Created By</label>
+                                <select id="createdByFilter" class="form-control">
+                                    <option value="">All Users</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Assigned To</label>
+                                <select id="assignedToFilter" class="form-control">
+                                    <option value="">All Users</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group" style="align-self: flex-end;">
+                            <button id="exportCsvBtn" class="btn btn--secondary">Export CSV</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="leadsContainer" class="leads-grid"></div>
+        </div>
+
+        <!-- 🆕 Enhanced Add Lead Page with Search, Edit, and CSV Features -->
+        <div id="addLeadPage" class="page-content hidden">
+            <div class="page-header">
+                <div>
+                    <h1 id="addLeadPageTitle">Add New Lead</h1>
+                    <p id="addLeadPageSubtitle">Submit a new placement opportunity</p>
+                </div>
+            </div>
+
+            <!-- 🆕 Lead Search Section -->
+            <div class="lead-search-section">
+                <div class="card">
+                    <div class="card__body">
+                        <h3>Search Existing Lead</h3>
+                        <div class="form-group">
+                            <label class="form-label">Lead ID</label>
+                            <div class="search-input-container">
+                                <input 
+                                    type="text" 
+                                    id="leadSearchInput" 
+                                    class="form-control" 
+                                    placeholder="Paste Lead ID to edit existing lead"
+                                    style="flex: 1;"
+                                >
+                                <button type="button" id="searchLeadBtn" class="btn btn--secondary">
+                                    🔍 Search & Edit
+                                </button>
+                                <button type="button" id="clearFormBtn" class="btn btn--outline">
+                                    🗑️ Clear
+                                </button>
+                            </div>
+                            <small style="color: var(--color-text-secondary); margin-top: 4px; display: block;">
+                                Search for an existing lead to edit its details
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 🆕 CSV Operations Section -->
+            <div class="csv-operations-section">
+                <div class="card">
+                    <div class="card__body">
+                        <h3>Bulk Operations</h3>
+                        <div class="csv-operations-buttons">
+                            <button type="button" id="downloadCsvTemplateBtn" class="btn btn--outline">
+                                📥 Download CSV Template
+                            </button>
+                            <div class="csv-import-container">
+                                <input 
+                                    type="file" 
+                                    id="csvFileInput" 
+                                    accept=".csv"
+                                    style="display: none;"
+                                >
+                                <button type="button" id="selectCsvBtn" class="btn btn--secondary">
+                                    📤 Select CSV File
+                                </button>
+                                <button type="button" id="importCsvBtn" class="btn btn--primary" style="display: none;">
+                                    Import Selected CSV
+                                </button>
+                            </div>
+                        </div>
+                        <div id="csvPreview" class="csv-preview" style="display: none;">
+                            <h4>CSV Preview:</h4>
+                            <div id="csvPreviewContent"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lead Form -->
+            <div class="card">
+                <div class="card__body">
+                    <form id="addLeadForm" class="add-lead-form">
+                        <fieldset id="addLeadFieldset">
+                            <!-- all inputs/selects/textareas/buttons -->
+                            <!-- 🆕 Hidden field to track if we're editing -->
+                            <input type="hidden" id="editingLeadId" value="">
+                            
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="companyName" class="form-label">Company Name *</label>
+                                    <input type="text" id="companyName" name="companyName" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="jobRole" class="form-label">Job Role *</label>
+                                    <input type="text" id="jobRole" name="jobRole" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="contactPerson" class="form-label">Contact Person *</label>
+                                    <input type="text" id="contactPerson" name="contactPerson" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="contactEmail" class="form-label">Contact Email *</label>
+                                    <input type="email" id="contactEmail" name="contactEmail" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="contactPhone" class="form-label">Contact Phone</label>
+                                    <input type="tel" id="contactPhone" name="contactPhone" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="source" class="form-label">Source</label>
+                                    <select id="source" name="source" class="form-control">
+                                        <option value="">Select Source</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Tags</label>
+                                <div id="tagsContainer" class="tags-container"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="description" class="form-label">Description</label>
+                                <textarea id="description" name="description" class="form-control" rows="4" placeholder="Additional details about the opportunity..."></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="jobDescriptionLink" class="form-label">Job Description Link</label>
+                                <input type="url" id="jobDescriptionLink" name="jobDescriptionLink" class="form-control" placeholder="https://company.com/job-posting">
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="button" class="btn btn--outline" onclick="clearAddLeadForm()">Clear</button>
+                                <button type="submit" id="submitLeadBtn" class="btn btn--primary">Submit Lead</button>
+                            </div>
+                        </fieldset>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Page -->
+        <div id="adminPage" class="page-content hidden">
+            <div class="page-header">
+                <div>
+                    <h1>Admin Panel</h1>
+                    <p>Manage users and system settings</p>
+                </div>
+            </div>
+
+            <div class="admin-grid">
+                <div class="card">
+                    <div class="card__body">
+                        <h3>Users Management</h3>
+                        <div id="usersTable" class="users-table"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card__body">
+                        <h3>System Stats</h3>
+                        <div id="adminStats" class="admin-stats"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card__body">
+                        <h3>Email Template Updation</h3>
+                        <form id="emailTemplateForm" class="email-template-form">
+                        <div class="form-group">
+                            <label for="emailSubject" class="form-label">Subject</label>
+                            <input type="text" id="emailSubject" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="emailBody" class="form-label">Body</label>
+                            <textarea id="emailBody" class="form-control" rows="5" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="emailSignature" class="form-label">Signature</label>
+                            <textarea id="emailSignature" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn--primary">Save Template</button>
+                        </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lead Modal -->
+    <div id="leadModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalLeadTitle">Lead Details</h2>
+                <button class="modal-close" onclick="closeLeadModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="leadInfo" class="lead-info-grid">
+                    <div class="lead-info-item">
+                        <label>Company:</label>
+                        <span id="modalCompany"></span>
+                    </div>
+                    <div class="lead-info-item">
+                        <label>Job Role:</label>
+                        <span id="modalJobRole"></span>
+                    </div>
+                    <div class="lead-info-item">
+                        <label>Contact Person:</label>
+                        <span id="modalContactPerson"></span>
+                    </div>
+                    <div class="lead-info-item">
+                        <label>Email:</label>
+                        <span id="modalEmail"></span>
+                    </div>
+                    <div class="lead-info-item">
+                        <label>Phone:</label>
+                        <span id="modalPhone"></span>
+                    </div>
+                    <div class="lead-info-item">
+                        <label>Source:</label>
+                        <span id="modalSource"></span>
+                    </div>
+                    <div class="lead-info-item">
+                        <label>Status:</label>
+                        <div class="status-container">
+                            <span id="modalStatus" class="status"></span>
+                            <select id="statusDropdown" class="form-control admin-only" onchange="updateLeadStatus()">
+                            </select>
+                        </div>
+                    </div>
+                    <div class="lead-info-item">
+                        <label>Job Description Link:</label>
+                        <span id="modalJobLink"></span>
+                    </div>
+                    <div class="lead-info-item">
+                        <label>Tags:</label>
+                        <div id="modalTags" class="tags-display"></div>
+                    </div>
+                    <div class="lead-info-item full-width">
+                        <label>Description:</label>
+                        <p id="modalDescription"></p>
+                    </div>
+                    <div class="lead-info-item">
+                        <label>Assigned To:</label>
+                        <select id="modalAssignedTo" class="form-control"></select>
+                    </div>
+                    <div class="lead-info-item">
+                        <label>Created By:</label>
+                        <select id="modalCreatedBy" class="form-control"></select>
+                    </div>
+                    <div class="lead-info-item">
+                        <label>Created Date:</label>
+                        <span id="modalCreatedDate"></span>
+                    </div>
+                </div>
+
+                <div class="comments-section">
+                    <h3>Comments & Updates</h3>
+                    <div id="commentsContainer" class="comments-container"></div>
+                    
+                    <form id="commentForm" class="comment-form">
+                        <div class="form-group">
+                            <textarea id="commentText" class="form-control" placeholder="Add a comment..." rows="3" required></textarea>
+                        </div>
+                        <div class="comment-actions">
+                            <button type="submit" class="btn btn--primary">Add Comment</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="status-history">
+                    <h3>Status History</h3>
+                    <div id="statusHistoryContainer" class="history-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Firebase SDK - NO STORAGE -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Application Scripts -->
+    <script src="firebase-config.js"></script>
+    <script src="auth.js"></script>
+    <script src="database.js"></script>
+    <script src="app.js"></script>
+
+    <!-- Auth Link Styles -->
+    <style>
+        .auth-link {
+            background: none;
+            border: none;
+            color: var(--color-primary);
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: inherit;
+        }
+        .auth-link:hover {
+            color: var(--color-primary-hover);
+        }
+        .auth-switch {
+            margin-top: var(--space-24);
+            text-align: center;
+            padding-top: var(--space-20);
+            border-top: 1px solid var(--color-border);
+        }
+        .auth-switch p {
+            color: var(--color-text-secondary);
+            font-size: var(--font-size-sm);
+            margin: 0;
+        }
+    </style>
+</body>
+</html>

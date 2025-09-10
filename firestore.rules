@@ -1,0 +1,150 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Anyone can read user documents (for displaying names, avatars, etc.)
+      allow read, list: if isSignedIn();
+      
+      // Users can create their own document during registration
+      allow create: if isOwner(userId) && 
+                       request.resource.data.role == 'member' &&
+                       request.resource.data.uid == userId;
+      
+      // Users can update their own profile, but not their role
+      allow update: if isOwner(userId) && 
+                       (!('role' in request.resource.data) || 
+                        request.resource.data.role == resource.data.role);
+      
+      // Only admins can update user roles and status
+      allow update: if isAdmin() && 
+                       userId != request.auth.uid; // Admins can't change their own role
+      
+      // No deletion of user documents
+      allow delete: if false;
+    }
+    
+    // Leads collection
+    match /leads/{leadId} {
+      // All authenticated users can read leads
+      allow read: if isSignedIn();
+      
+      // Members can create leads
+      allow create: if isSignedIn() && 
+                       request.resource.data.createdBy == request.auth.uid &&
+                       request.resource.data.status == 'New';
+      
+      // Lead creators can update their own leads (except status)
+      allow update: if isSignedIn() && 
+                       resource.data.createdBy == request.auth.uid &&
+                       (!('status' in request.resource.data) || 
+                        request.resource.data.status == resource.data.status);
+      
+      // Admins can update any lead including status
+      allow update: if isAdmin();
+      
+      // Only admins can delete leads
+      allow delete: if isAdmin();
+      
+      // Comments subcollection
+      match /comments/{commentId} {
+        // All authenticated users can read/list comments
+        allow read, list: if isSignedIn();
+        
+        // Authenticated users can create comments
+        allow create: if isSignedIn() && 
+                         request.resource.data.userId == request.auth.uid;
+        
+        // Users can update their own comments (except admin pinned status)
+        allow update: if isSignedIn() && 
+                         resource.data.userId == request.auth.uid &&
+                         (!('isAdminPinned' in request.resource.data) || 
+                          request.resource.data.isAdminPinned == resource.data.isAdminPinned);
+        
+        // Admins can pin/unpin comments
+        allow update: if isAdmin();
+        
+        // Users can delete their own comments, admins can delete any
+        allow delete: if isSignedIn() && 
+                         (resource.data.userId == request.auth.uid || isAdmin());
+      }
+      
+      // Status history subcollection
+      match /statusHistory/{historyId} {
+        // All authenticated users can read/list status history
+        allow read, list: if isSignedIn();
+        
+        // Only admins can create status history (through lead status updates)
+        allow create: if isAdmin() && 
+                         request.resource.data.changedBy == request.auth.uid;
+        
+        // No updates or deletes to preserve audit trail
+        allow update: if false;
+        allow delete: if false;
+      }
+    }
+
+    // Settings collection
+    match /settings/{docId} {
+      // Anyone signed in can read (needed so non-admins can use the template when sending emails)
+      allow read: if isSignedIn();
+
+      // Only admins can create or update settings (like emailTemplate)
+      allow create, update: if isAdmin();
+
+      // Prevent deletes (optional safety)
+      allow delete: if false;
+    }
+
+    // ✅ CollectionGroup access for activity feed
+    match /{path=**}/comments/{commentId} {
+      allow read, list: if isSignedIn();
+    }
+
+    match /{path=**}/statusHistory/{historyId} {
+      allow read, list: if isSignedIn();
+    }
+
+    // UserLeadsMap collection
+    match /userLeadsMap/{userId} {
+      // Only the user themselves or an admin can read
+      allow read, list: if isOwner(userId) || isAdmin();
+
+      // Leads subcollection under each user
+      match /leads/{leadId} {
+        // Only the user can create their own mappings
+        allow create: if isOwner(userId) &&
+                        request.resource.data.leadId == leadId &&
+                        request.resource.data.createdAt == request.time;
+
+        // Allow read for the owner or admin
+        allow read, list: if isOwner(userId) || isAdmin();
+
+        // No update/delete to preserve mapping integrity
+        allow update, delete: if false;
+      }
+    }
+
+    
+    // Prevent access to any other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
