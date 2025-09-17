@@ -112,13 +112,31 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // ✅ CollectionGroup access for activity feed
+    // CollectionGroup access for activity feed
     match /{path=**}/comments/{commentId} {
       allow read, list: if isSignedIn();
     }
 
     match /{path=**}/statusHistory/{historyId} {
       allow read, list: if isSignedIn();
+    }
+
+    match /notifications/{notificationId} {
+      
+      // Allow ALL authenticated users to read notifications (no restriction)
+      allow read: if request.auth != null;
+
+      // Allow ALL authenticated users to create notifications
+      allow create: if request.auth != null
+                    && request.resource.data.isRead == false
+                    && request.resource.data.keys().hasOnly(['toUserId', 'leadId', 'type', 'message', 'taskId', 'isRead', 'createdAt']);
+      
+      // Allow ONLY the recipient user to update their notification's isRead field 
+      allow update: if request.auth != null
+                    && request.auth.uid == resource.data.toUserId
+
+      // Disallow deletes from clients
+      allow delete: if false;
     }
 
     // UserLeadsMap collection

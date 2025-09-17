@@ -87,6 +87,10 @@
                         class="btn btn--outline btn--sm"
                         data-mode="system"
                         title="Toggle theme">🌓</button>
+                    <div class="nav-item notification-bell">
+                    <span id="notificationBellIcon" class="bell-icon" onclick="toggleNotificationsPanel()">🔔</span>
+                    <div id="notificationsPanel" class="notifications-panel" style="display:none;"></div>
+                    </div>
                 </div>
             </div>
         </nav>
@@ -466,9 +470,19 @@
                     <h3>Comments & Updates</h3>
                     <div id="commentsContainer" class="comments-container"></div>
                     
-                    <form id="commentForm" class="comment-form">
+                    <!--<form id="commentForm" class="comment-form">
                         <div class="form-group">
                             <textarea id="commentText" class="form-control" placeholder="Add a comment..." rows="3" required></textarea>
+                            <div id="mentionAutocomplete" class="mention-autocomplete" style="position: absolute; top: 100%; left: 0; z-index: 1000; display: none;"></div>
+                        </div>
+                        <div class="comment-actions">
+                            <button type="submit" class="btn btn--primary">Add Comment</button>
+                        </div>
+                    </form>-->
+                    <form id="commentForm" class="comment-form">
+                        <div class="form-group" style="position: relative;">
+                            <textarea id="commentText" class="form-control" placeholder="Add a comment...or  @ to mention" rows="3" required></textarea>
+                            <div id="mentionAutocomplete" class="mention-autocomplete" style="position: absolute; top: 100%; left: 0; z-index: 1000; display: none;"></div>
                         </div>
                         <div class="comment-actions">
                             <button type="submit" class="btn btn--primary">Add Comment</button>
@@ -526,5 +540,13 @@
             margin: 0;
         }
     </style>
+
+    <script>
+        function toggleNotificationsPanel() {
+        const panel = document.getElementById('notificationsPanel');
+        panel.style.display = (panel.style.display === 'none' || !panel.style.display) ? 'block' : 'none';
+        }
+        window.toggleNotificationsPanel = toggleNotificationsPanel;
+    </script>
 </body>
 </html>

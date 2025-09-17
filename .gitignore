@@ -77,6 +77,6 @@ node_modules/
 Thumbs.db
 
 # Firebase configs
-firebase-config.js
+public/firebase-config.js
 serviceAccountKey.json
 *.serviceAccount.json

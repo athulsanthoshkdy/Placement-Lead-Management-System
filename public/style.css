@@ -1766,3 +1766,111 @@ body.admin .nav-item.admin-only {
 .editing-mode .lead-search-section .card__body {
     background: rgba(var(--color-warning-rgb), 0.05);
 }
+
+.notification-bell {
+  position: relative;
+}
+
+.bell-icon {
+  cursor: pointer;
+  font-size: 20px;        /* Makes the emoji bigger */
+  line-height: 24px;
+  position: relative;
+  display: inline-block;
+  user-select: none;
+}
+
+.bell-icon[data-unread]:after {
+  content: attr(data-unread);
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #e53e3e;
+  color: #fff;
+  font-size: 11px;
+  border-radius: 50%;
+  padding: 1.5px 5px;
+  min-width: 18px;
+  text-align: center;
+}
+
+
+.notifications-panel {
+  display: none;
+  position: absolute;
+  right: 0; top: 30px;
+  z-index: 15;
+  background-color: var(--color-background);
+  border-color: var(--border-color, #ccc);
+  color: var(--text-color, #333);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+  right: 0; top: 30px;
+  z-index: 15;
+  border-radius: 6px;
+
+  width: 320px;          /* Set the width you want */
+  max-height: 400px;     /* Max height before scroll */
+  overflow-y: auto;      /* Scroll vertically if needed */
+  padding: 8px 0;   
+}
+
+.notification-item {
+  padding: 10px;
+  border-bottom: 1px solid var(--border-color, #eee);
+  cursor: pointer;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  transition: background-color 0.2s ease;
+}
+
+.notification-item:hover {
+  background-color: var(--primary-color);
+  color: var(--primary-text-color);
+}
+
+.notification-item.unread {
+  background-color: var(--color-background);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.notification-empty {
+  padding: 18px;
+  color: var(--text-muted, #777);
+  text-align: center;
+}
+
+.notification-time {
+  float: right;
+  color: var(--text-muted, #999);
+  font-size: 11px;
+}
+
+.mention-autocomplete {
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #ddd);
+    border-radius: var(--radius-base, 4px);
+    box-shadow: var(--shadow-md, 0 4px 6px rgba(0, 0, 0, 0.1));
+    max-height: 200px;
+    overflow-y: auto;
+    width: 100%;
+    font-size: 14px;
+}
+
+.mention-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--color-border, #eee);
+    transition: background-color 0.2s ease;
+}
+
+.mention-item:hover,
+.mention-item.active {
+    background-color: var(--color-primary, #007bff);
+    color: var(--color-btn-primary-text, #fff);
+}
+
+.mention-item:last-child {
+    border-bottom: none;
+}

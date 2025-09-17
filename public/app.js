@@ -14,6 +14,7 @@ class PlacementLeadSystem {
     this.isEditingMode = false;
     this.editingLeadId = null;
     this.originalLeadData = null;
+    this.collectedMentions = this.collectedMentions || new Set();
 
     this.init();
   }
@@ -28,8 +29,60 @@ class PlacementLeadSystem {
     }
 
     this.config = window.DatabaseService.getConfig();
+
     this.setupEventListeners();
     this.setupAuthStateListener();
+    await this.loadUsersForFilter();
+    this.setupMentionAutocomplete();
+
+    window.DatabaseService.onUsersSnapshot((users) => {
+      this.users = users || [];
+      this.loadUsersForFilter(); // update filters dropdown in UI
+      this.setupMentionAutocomplete(); // ensure autocomplete uses latest users
+    });
+  }
+
+  renderNotificationsPanel(notifications) {
+    const panel = document.getElementById('notificationsPanel');
+    if (!panel) return;
+
+    // Show unread count on bell icon
+    const unreadCount = notifications.filter(n => !n.isRead).length;
+    const icon = document.getElementById('notificationBellIcon');
+    if (icon) {
+      icon.dataset.unread = unreadCount > 0 ? unreadCount : '';
+    }
+
+    // Render notifications list
+    panel.innerHTML = notifications.length
+      ? notifications.map(n => `
+        <div class="notification-item${n.isRead ? '' : ' unread'}" data-id="${n.id}" data-leadid="${n.leadId}">
+          <span>${n.message}</span>
+          <span class="notification-time">${this.formatTimeAgo(n.createdAt)}</span>
+        </div>`).join('')
+      : "<div class='notification-empty'>No notifications</div>";
+
+    // Click handler for each notification
+    panel.querySelectorAll('.notification-item').forEach(item => {
+      item.onclick = () => this.handleNotificationClick(item.dataset.id, item.dataset.leadid);
+    });
+  }
+
+  async handleNotificationClick(notificationId, leadId) {
+    await window.DatabaseService.markNotificationAsRead(notificationId);
+    if (leadId) this.openLeadModal(leadId);
+  }
+
+  // Optionally, add a helper to format time nicely:
+  formatTimeAgo(ts) {
+    if (!ts) return '';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    const now = new Date();
+    const sec = Math.floor((now - d) / 1000);
+    if (sec < 60) return 'Just now';
+    if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
+    if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
+    return `${Math.floor(sec / 86400)}d ago`;
   }
 
   async sendEmailToLead(lead) {
@@ -885,6 +938,12 @@ class PlacementLeadSystem {
       if (userName && userData) {
         userName.textContent = userData.name;
       }
+
+      if (this.notificationsUnsubscribe) this.notificationsUnsubscribe(); // Clean old listener
+      this.notificationsUnsubscribe = window.DatabaseService.onUserNotificationsSnapshot(
+        this.currentUser.uid, 
+        notifications => this.renderNotificationsPanel(notifications)
+      );
     }
     
     // Set admin class
@@ -1340,6 +1399,8 @@ class PlacementLeadSystem {
       submitButton.textContent = originalText;
       submitButton.disabled = false;
     }
+
+    
   }
 
   // LEAD MODAL
@@ -1425,6 +1486,147 @@ class PlacementLeadSystem {
     }
   }
 
+  updateActiveMentionItem(autocomplete, activeIndex) {
+  const items = autocomplete.querySelectorAll('.mention-item');
+  items.forEach((item, idx) => {
+    if (idx === activeIndex) {
+      item.classList.add('active');
+      // Optionally scroll into view if overflowed
+      item.scrollIntoView({ block: 'nearest' });
+    } else {
+      item.classList.remove('active');
+    }
+  });
+}
+
+
+setupMentionAutocomplete() {
+    console.log('Setting up mention autocomplete...');
+    
+    const textarea = document.getElementById('commentText');
+    const autocomplete = document.getElementById('mentionAutocomplete');
+    
+    console.log('Textarea found:', !!textarea);
+    console.log('Autocomplete container found:', !!autocomplete);
+    console.log('Users available:', this.users?.length || 0);
+    
+    if (!textarea || !autocomplete) {
+        console.log('Mention elements not found, skipping setup');
+        return;
+    }
+    
+    if (!this.users || this.users.length === 0) {
+        console.log('Users not loaded, mention autocomplete disabled');
+        return;
+    }
+
+    // Rest of your existing mention code...
+    let mentionStartIndex = -1;
+    let filteredUsers = [];
+    let activeIndex = 0;
+
+    textarea.addEventListener('input', () => {
+        console.log('Input detected:', textarea.value);
+        
+        const caretPos = textarea.selectionStart;
+        const text = textarea.value;
+        mentionStartIndex = text.lastIndexOf('@', caretPos - 1);
+
+        if (mentionStartIndex === -1 || (mentionStartIndex > 0 && /\s/.test(text[mentionStartIndex - 1]))) {
+            autocomplete.style.display = 'none';
+            return;
+        }
+
+        const query = text.slice(mentionStartIndex + 1, caretPos).toLowerCase();
+        console.log('Mention query:', query);
+        
+        if (query.length === 0) {
+            autocomplete.style.display = 'none';
+            return;
+        }
+
+        filteredUsers = this.users.filter(u =>
+            u.name.toLowerCase().startsWith(query) || u.email.toLowerCase().startsWith(query)
+        ).slice(0, 10);
+
+        console.log('Filtered users:', filteredUsers.length);
+
+        if (filteredUsers.length === 0) {
+            autocomplete.style.display = 'none';
+            return;
+        }
+
+        autocomplete.innerHTML = filteredUsers.map((user, idx) =>
+            `<div class="mention-item ${idx === 0 ? 'active' : ''}" data-index="${idx}" data-id="${user.id}">
+                ${user.name} &lt;${user.email}&gt;
+            </div>`
+        ).join('');
+
+        autocomplete.style.display = 'block';
+        activeIndex = 0;
+    });
+
+    // Rest of keyboard and click handlers remain the same...
+    textarea.addEventListener('keydown', (e) => {
+      if (autocomplete.style.display === 'block') {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          activeIndex = (activeIndex + 1) % filteredUsers.length;
+          this.updateActiveMentionItem(autocomplete, activeIndex);
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          activeIndex = (activeIndex - 1 + filteredUsers.length) % filteredUsers.length;
+          this.updateActiveMentionItem(autocomplete, activeIndex);
+        } else if (e.key === 'Enter' || e.key === 'Tab') {
+          e.preventDefault();
+          this.selectMention(filteredUsers[activeIndex], textarea, mentionStartIndex, autocomplete);
+        } else if (e.key === 'Escape') {
+          autocomplete.style.display = 'none';
+        }
+      }
+    });
+
+    autocomplete.addEventListener('click', (e) => {
+      if (e.target.classList.contains('mention-item')) {
+        const idx = parseInt(e.target.dataset.index);
+        this.selectMention(filteredUsers[idx], textarea, mentionStartIndex, autocomplete);
+      }
+    });
+  }
+
+
+  selectMention(user, textarea, mentionStartIndex, autocomplete) {
+    const text = textarea.value;
+    const beforeMention = text.slice(0, mentionStartIndex);
+    const afterCaret = text.slice(textarea.selectionStart);
+
+    const mentionText = `@${user.name.replace(/\s/g, "")} `;
+    textarea.value = beforeMention + mentionText + afterCaret;
+
+    const newCaretPos = (beforeMention + mentionText).length;
+    textarea.setSelectionRange(newCaretPos, newCaretPos);
+
+    autocomplete.style.display = "none";
+
+    // Instead of sending notification here, add user id to a mentions set
+    this.collectedMentions = this.collectedMentions || new Set();
+    this.collectedMentions.add(user.id);
+  }
+
+
+  async sendMentionNotification(mentionedUserId) {
+    const leadId = this.currentLeadId; // assumed context
+    const message = `You were mentioned in a comment`;
+
+    await window.DatabaseService.sendNotification(
+      mentionedUserId,
+      leadId,
+      "mention",
+      message
+    );
+  }
+
+
   // 🆕 Populate modal "Created By" as a dropdown (if present) + update DB on change
   populateModalCreatedBy(lead, creator) {
     const createdByEl = document.getElementById('modalCreatedBy');
@@ -1502,6 +1704,8 @@ class PlacementLeadSystem {
             await window.DatabaseService.addComment(lead.id, {
               content: `Assignee changed from "${oldUser?.name || oldUser?.email || oldAssignee}" to "${newUser?.name || newUser?.email || newAssignee}"`
             }, this.currentUser.uid);
+
+            await window.DatabaseService.sendNotification(newCreatedBy1,lead.id,"assigned",`You have been assigned to Lead: ${lead.companyName || ''}`,null);
       
           } catch (err) {
             console.error('Error updating Assignee:', err);
@@ -1662,6 +1866,16 @@ class PlacementLeadSystem {
 
       commentText.value = '';
       this.showToast('Comment added successfully!', 'success');
+
+      // After successfully adding comment, send notifications to all mentioned users
+      const mentionsToNotify = this.collectedMentions || new Set();
+      for (const userId of mentionsToNotify) {
+        await this.sendMentionNotification(userId);
+      }
+
+      // Clear collected mentions for next comment
+      this.collectedMentions = new Set();
+
     } catch (error) {
       console.error('Error adding comment:', error);
       this.showToast('Error adding comment', 'error');

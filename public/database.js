@@ -195,6 +195,32 @@ class DatabaseService {
     }
   }
 
+  async  sendNotification(toUserId, leadId, type, message, taskId) {
+    await db.collection("notifications").add({
+      toUserId,
+      type,
+      leadId,
+      taskId: taskId || null,
+      message,
+      isRead: false,
+      createdAt: this.serverTimestamp()
+    });
+  }
+
+  onUserNotificationsSnapshot(userId, callback) {
+    return this.db.collection("notifications")
+      .where("toUserId", "==", userId)
+      .orderBy("createdAt", "desc")
+      .onSnapshot(snapshot => {
+        const notifications = [];
+        snapshot.forEach(doc => notifications.push({ id: doc.id, ...doc.data() }));
+        callback(notifications);
+      });
+  }
+  async markNotificationAsRead(notificationId) {
+    await this.db.collection("notifications").doc(notificationId).update({ isRead: true });
+  }
+
   // Listen to comments changes
   onCommentsSnapshot(leadId, callback) {
     return this.db.collection('leads').doc(leadId)
