@@ -19,17 +19,23 @@ class AuthService {
       });
 
       // Create user document in Firestore
-      await this.db.collection('users').doc(credential.user.uid).set({
-        uid: credential.user.uid,
-        name: displayName,
-        email: email,
-        role: 'member', // Default role
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2563EB&color=fff`,
-        joinDate: window.firebaseApp.serverTimestamp(),
-        isActive: false,
-        createdAt: window.firebaseApp.serverTimestamp(),
-        updatedAt: window.firebaseApp.serverTimestamp()
-      });
+      try {
+        await this.db.collection('users').doc(credential.user.uid).set({
+          uid: credential.user.uid,
+          name: displayName,
+          email: email,
+          role: 'member', // Default role
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2563EB&color=fff`,
+          joinDate: window.firebaseApp.serverTimestamp(),
+          isActive: false,
+          createdAt: window.firebaseApp.serverTimestamp(),
+          updatedAt: window.firebaseApp.serverTimestamp()
+        });
+        console.log('User Firestore document created successfully');
+      } catch (error) {
+        console.error('Failed to create user document in Firestore:', error);
+        throw error;
+      }
 
       return credential.user;
     } catch (error) {
