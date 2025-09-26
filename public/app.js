@@ -1616,7 +1616,9 @@ setupMentionAutocomplete() {
 
   async sendMentionNotification(mentionedUserId) {
     const leadId = this.currentLeadId; // assumed context
-    const message = `You were mentioned in a comment`;
+    const lead_object = this.allLeads.find(l => l.id == this.currentLeadId);
+    const companyName = lead_object ? lead_object.companyName : "";
+    const message = `You were mentioned in a comment for ${companyName}`;
 
     await window.DatabaseService.sendNotification(
       mentionedUserId,
